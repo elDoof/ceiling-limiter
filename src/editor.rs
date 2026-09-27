@@ -20,6 +20,8 @@ const BACKGROUND: Color32 = Color32::from_rgb(0x1a, 0x1d, 0x22);
 const METER_RANGE_DB: f32 = 24.0;
 const METER_TICKS_DB: [f32; 5] = [0.0, 6.0, 12.0, 18.0, 24.0];
 const METER_DECAY_DB_PER_SECOND: f32 = 18.0;
+/// Readings below this round to zero, so show "0.0" instead of "-0.0".
+const METER_DISPLAY_FLOOR_DB: f32 = 0.05;
 const MAX_FRAME_SECONDS: f32 = 0.1;
 const FADER_TICKS_DB: [f32; 6] = [0.0, -6.0, -12.0, -18.0, -24.0, -30.0];
 
@@ -104,7 +106,11 @@ fn draw(ui: &mut Ui, params: &CeilingParams, setter: &ParamSetter, meter_db: f32
 fn draw_meter(ui: &Ui, c: &Canvas, meter_db: f32) {
     let small = c.size(10.5);
     widgets::draw_text(ui, c.pos(20.0, 50.0), Align2::LEFT_CENTER, "GAIN REDUCTION", small, TEXT_DIM);
-    let reading = format!("-{meter_db:.1} dB");
+    let reading = if meter_db < METER_DISPLAY_FLOOR_DB {
+        String::from("0.0 dB")
+    } else {
+        format!("-{meter_db:.1} dB")
+    };
     widgets::draw_text(ui, c.pos(280.0, 50.0), Align2::RIGHT_CENTER, &reading, c.size(11.0), TEXT);
 
     let bar = c.rect(20.0, 60.0, 260.0, 16.0);
