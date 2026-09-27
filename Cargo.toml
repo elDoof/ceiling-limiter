@@ -1,0 +1,30 @@
+[package]
+name = "ceiling_limiter"
+version = "0.1.0"
+edition = "2021"
+description = "Transparent look-ahead brickwall limiter (CLAP) with threshold/output faders, fader link and true-peak detection"
+license = "GPL-3.0-or-later"
+
+[workspace]
+members = ["xtask"]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683", features = ["assert_process_allocs"] }
+nih_plug_egui = { git = "https://github.com/robbert-vdh/nih-plug.git", rev = "de421011f41a6d10fc8c7a6084e4f4dee0143683" }
+atomic_float = "0.1"
+
+[profile.release]
+lto = "thin"
+strip = "symbols"
+
+[features]
+# Standalone app for testing without a DAW: `cargo run --release --features standalone`
+standalone = ["nih_plug/standalone"]
+
+[[bin]]
+name = "ceiling_limiter"
+path = "src/main.rs"
+required-features = ["standalone"]

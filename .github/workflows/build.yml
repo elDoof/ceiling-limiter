@@ -1,0 +1,84 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  LINUX_DEPS: >-
+    libgl-dev libx11-dev libx11-xcb-dev libxcb1-dev libxcb-dri2-0-dev libxcb-icccm4-dev
+    libxcursor-dev libxkbcommon-dev libxcb-shape0-dev libxcb-xfixes0-dev libasound2-dev
+    libjack-dev
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $LINUX_DEPS
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --lib --release
+
+      - name: Bundle
+        run: cargo xtask bundle ceiling_limiter --release
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cd target/bundled
+          tar -czf ../../dist/ceiling-limiter-linux-x86_64.tar.gz "Ceiling Limiter.clap" "Ceiling Limiter.vst3"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ceiling-limiter-linux-x86_64
+          path: dist/ceiling-limiter-linux-x86_64.tar.gz
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/ceiling-limiter-linux-x86_64.tar.gz
+          generate_release_notes: true
+
+  screenshot:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $LINUX_DEPS xvfb imagemagick libgl1-mesa-dri
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build standalone
+        run: cargo build --release --features standalone
+
+      - name: Capture GUI
+        run: |
+          Xvfb :99 -screen 0 300x420x24 &
+          sleep 2
+          DISPLAY=:99 ./target/release/ceiling_limiter --backend dummy &
+          sleep 6
+          mkdir -p docs
+          DISPLAY=:99 import -window root docs/screenshot.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshot
+          path: docs/screenshot.png
